@@ -231,6 +231,9 @@ void HeapObject::HeapObjectPrint(std::ostream& os) {
     case FEEDBACK_METADATA_TYPE:
       FeedbackMetadata::cast(*this).FeedbackMetadataPrint(os);
       break;
+    case BIG_INT_BASE_TYPE:
+      BigIntBase::cast(*this).BigIntBasePrint(os);
+      break;
     case JS_PROMISE_CONSTRUCTOR_TYPE:
     case JS_REG_EXP_CONSTRUCTOR_TYPE:
     case JS_ARRAY_CONSTRUCTOR_TYPE:
@@ -258,6 +261,7 @@ void HeapObject::HeapObjectPrint(std::ostream& os) {
     case THIN_ONE_BYTE_STRING_TYPE:
     case UNCACHED_EXTERNAL_STRING_TYPE:
     case UNCACHED_EXTERNAL_ONE_BYTE_STRING_TYPE:
+    case JS_LAST_DUMMY_API_OBJECT_TYPE:
       // TODO(all): Handle these types too.
       os << "UNKNOWN TYPE " << map().instance_type();
       UNREACHABLE();
@@ -1423,6 +1427,7 @@ void JSArrayBuffer::JSArrayBufferPrint(std::ostream& os) {
   JSObjectPrintHeader(os, *this, "JSArrayBuffer");
   os << "\n - backing_store: " << backing_store();
   os << "\n - byte_length: " << byte_length();
+  os << "\n - max_byte_length: " << max_byte_length();
   if (is_external()) os << "\n - external";
   if (is_detachable()) os << "\n - detachable";
   if (was_detached()) os << "\n - detached";
@@ -1653,7 +1658,7 @@ void Code::CodePrint(std::ostream& os) {
 
 void CodeDataContainer::CodeDataContainerPrint(std::ostream& os) {
   PrintHeader(os, "CodeDataContainer");
-  os << "\n - kind_specific_flags: " << kind_specific_flags();
+  os << "\n - kind_specific_flags: " << kind_specific_flags(kRelaxedLoad);
   if (V8_EXTERNAL_CODE_SPACE_BOOL) {
     os << "\n - code: " << Brief(code());
     os << "\n - code_entry_point: "
@@ -1854,6 +1859,7 @@ void WasmTypeInfo::WasmTypeInfoPrint(std::ostream& os) {
   os << "\n - type address: " << reinterpret_cast<void*>(foreign_address());
   os << "\n - supertypes: " << Brief(supertypes());
   os << "\n - subtypes: " << Brief(subtypes());
+  os << "\n - instance: " << Brief(instance());
   os << "\n";
 }
 
@@ -1979,7 +1985,6 @@ void WasmInstanceObject::WasmInstanceObjectPrint(std::ostream& os) {
   }
   os << "\n - memory_start: " << static_cast<void*>(memory_start());
   os << "\n - memory_size: " << memory_size();
-  os << "\n - memory_mask: " << AsHex(memory_mask());
   os << "\n - imported_function_targets: "
      << static_cast<void*>(imported_function_targets());
   os << "\n - globals_start: " << static_cast<void*>(globals_start());
@@ -2071,10 +2076,10 @@ void WasmMemoryObject::WasmMemoryObjectPrint(std::ostream& os) {
   os << "\n";
 }
 
-void WasmExceptionObject::WasmExceptionObjectPrint(std::ostream& os) {
-  PrintHeader(os, "WasmExceptionObject");
+void WasmTagObject::WasmTagObjectPrint(std::ostream& os) {
+  PrintHeader(os, "WasmTagObject");
   os << "\n - serialized_signature: " << Brief(serialized_signature());
-  os << "\n - exception_tag: " << Brief(exception_tag());
+  os << "\n - tag: " << Brief(tag());
   os << "\n";
 }
 

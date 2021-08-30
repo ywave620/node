@@ -207,6 +207,7 @@ class V8_EXPORT_PRIVATE WasmFunctionBuilder : public ZoneObject {
 
   WasmModuleBuilder* builder() const { return builder_; }
   uint32_t func_index() { return func_index_; }
+  uint32_t sig_index() { return signature_index_; }
   inline FunctionSig* signature();
 
  private:
@@ -288,12 +289,33 @@ class V8_EXPORT_PRIVATE WasmModuleBuilder : public ZoneObject {
 
   Zone* zone() { return zone_; }
 
+  bool IsSignature(uint32_t index) {
+    return types_[index].kind == Type::kFunctionSig;
+  }
+
   FunctionSig* GetSignature(uint32_t index) {
     DCHECK(types_[index].kind == Type::kFunctionSig);
     return types_[index].sig;
   }
 
+  bool IsStructType(uint32_t index) {
+    return types_[index].kind == Type::kStructType;
+  }
+  StructType* GetStructType(uint32_t index) {
+    return types_[index].struct_type;
+  }
+
+  bool IsArrayType(uint32_t index) {
+    return types_[index].kind == Type::kArrayType;
+  }
+  ArrayType* GetArrayType(uint32_t index) { return types_[index].array_type; }
+
+  WasmFunctionBuilder* GetFunction(uint32_t index) { return functions_[index]; }
   int NumExceptions() { return static_cast<int>(exceptions_.size()); }
+
+  int NumTypes() { return static_cast<int>(types_.size()); }
+
+  int NumFunctions() { return static_cast<int>(functions_.size()); }
 
   FunctionSig* GetExceptionType(int index) {
     return types_[exceptions_[index]].sig;

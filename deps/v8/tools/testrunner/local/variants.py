@@ -38,7 +38,6 @@ ALL_VARIANT_FLAGS = {
   "stress_snapshot": [["--stress-snapshot"]],
   # Trigger stress sampling allocation profiler with sample interval = 2^14
   "stress_sampling": [["--stress-sampling-allocation-profiler=16384"]],
-  "trusted": [["--no-untrusted-code-mitigations"]],
   "no_wasm_traps": [["--no-wasm-trap-handler"]],
   "turboprop": [["--turboprop"]],
   "turboprop_as_toptier": [["--turboprop-as-toptier", "--turboprop"]],
@@ -53,16 +52,19 @@ ALL_VARIANT_FLAGS = {
 # implications defined in flag-definitions.h.
 INCOMPATIBLE_FLAGS_PER_VARIANT = {
   "jitless": ["--opt", "--always-opt", "--liftoff", "--track-field-types",
-              "--validate-asm", "--sparkplug", "--always-sparkplug"],
+              "--validate-asm", "--sparkplug", "--always-sparkplug",
+              "--regexp-tier-up"],
   "nooptimization": ["--always-opt"],
   "slow_path": ["--no-force-slow-path"],
   "stress_concurrent_allocation": ["--single-threaded-gc", "--predictable"],
-  "stress_concurrent_inlining": ["--single-threaded", "--predictable"],
+  "stress_concurrent_inlining": ["--single-threaded", "--predictable",
+                                 "--turboprop", "--lazy-feedback-allocation"],
+  "turboprop": ["--stress_concurrent_inlining"],
   # The fast API tests initialize an embedder object that never needs to be
   # serialized to the snapshot, so we don't have a
   # SerializeInternalFieldsCallback for it, so they are incompatible with
   # stress_snapshot.
-  "stress_snapshot": [["--turbo-fast-api-calls"]],
+  "stress_snapshot": ["--expose-fast-api"],
   "stress": ["--always-opt", "--no-always-opt",
              "--max-inlined-bytecode-size=*",
              "--max-inlined-bytecode-size-cumulative=*", "--stress-inline",
