@@ -244,14 +244,23 @@ class StreamResource {
   // `*bufs` and `*count` accordingly. This is a no-op by default.
   // Return 0 for success and a libuv error code for failures.
   virtual int DoTryWrite(uv_buf_t** bufs, size_t* count);
-  // Initiate a write of data. If the write completes synchronously, return 0 on
-  // success (with bufs modified to indicate how much data was consumed) or a
-  // libuv error code on failure. If the write will complete asynchronously,
-  // return 0. When the write completes asynchronously, call req_wrap->Done()
-  // with 0 on success (with bufs modified to indicate how much data was
-  // consumed) or a libuv error code on failure. Do not call req_wrap->Done() if
-  // the write completes synchronously, that is, it should never be called
-  // before DoWrite() has returned.
+  // Initiate a write of data.
+  //
+  // On an immediate failure, a libuv error code is returned and
+  // req_wrap->Done() will never be called.
+  //
+  // Otherwise, 0 is returned and req_wrap->Done(status) will be called
+  // with status set to either
+  //  (1) 0 after all data are written, or
+  //  (2) a libuv error code when an error occurs
+  // in both cases, req_wrap->Done() will never be called before DoWrite()
+  // returns.
+  //
+  // When 0 is returned, memory specified by `bufs` and `count` must remain
+  // valid until req_wrap->Done() gets called.
+  //
+  // `bufs` might or might not be changed, caller should not rely on this.
+  // After DoWrite() returns, `bufs` can and should be freed.
   virtual int DoWrite(WriteWrap* w,
                       uv_buf_t* bufs,
                       size_t count,
@@ -450,6 +459,16 @@ class SimpleWriteWrap : public WriteWrap, public OtherBase {
   bool IsNotIndicativeOfMemoryLeakAtExit() const override {
     return OtherBase::IsNotIndicativeOfMemoryLeakAtExit();
   }
+};
+
+class LibuvWriteWrap : public SimpleWriteWrap<ReqWrap<uv_write_t>> {
+ public:
+  LibuvWriteWrap(StreamBase* stream, v8::Local<v8::Object> req_wrap_obj);
+
+ private:
+  bool sync_finished_ = false;  // see LibuvWriteWrap::Write()
+
+  friend class LibuvStreamWrap;
 };
 
 }  // namespace node

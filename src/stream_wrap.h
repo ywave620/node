@@ -56,6 +56,11 @@ class LibuvStreamWrap : public HandleWrap, public StreamBase {
               uv_buf_t* bufs,
               size_t count,
               uv_stream_t* send_handle) override;
+  inline StreamWriteResult Write(
+      uv_buf_t* bufs,
+      size_t count,
+      uv_stream_t* send_handle = nullptr,
+      v8::Local<v8::Object> req_wrap_obj = v8::Local<v8::Object>());
 
   inline uv_stream_t* stream() const {
     return stream_;

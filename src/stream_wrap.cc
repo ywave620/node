@@ -322,7 +322,10 @@ void LibuvStreamWrap::SetBlocking(const FunctionCallbackInfo<Value>& args) {
 }
 
 typedef SimpleShutdownWrap<ReqWrap<uv_shutdown_t>> LibuvShutdownWrap;
-typedef SimpleWriteWrap<ReqWrap<uv_write_t>> LibuvWriteWrap;
+
+LibuvWriteWrap::LibuvWriteWrap(StreamBase* stream,
+                               v8::Local<v8::Object> req_wrap_obj)
+    : SimpleWriteWrap<ReqWrap<uv_write_t>>(stream, req_wrap_obj) {}
 
 ShutdownWrap* LibuvStreamWrap::CreateShutdownWrap(Local<Object> object) {
   return new LibuvShutdownWrap(this, object);
@@ -402,12 +405,66 @@ int LibuvStreamWrap::DoWrite(WriteWrap* req_wrap,
                      AfterUvWrite);
 }
 
+// A libuv stream specific Write(), one syscall is saved if the stream is busy
+// compared with the general StreamBase::Write().
+//
+// StreamBase::Write() call DoTryWrite() and possibly DoWrite().
+// DoTryWrite() tries writing and drops overflowed data, while DoWrite() tries
+// writing, queues overflowed data, retry asynchronously. In case where data is
+// overflowed, the try(a syscall) of DoWrite() is actually effectless.
+StreamWriteResult LibuvStreamWrap::Write(uv_buf_t* bufs,
+                                         size_t count,
+                                         uv_stream_t* send_handle,
+                                         v8::Local<v8::Object> req_wrap_obj) {
+  Environment* env = stream_env();
 
+  size_t total_bytes = 0;
+  for (size_t i = 0; i < count; ++i) {
+    total_bytes += bufs[i].len;
+  }
+  bytes_written_ += total_bytes;
+
+  if (req_wrap_obj.IsEmpty()) {
+    if (!env->write_wrap_template()
+             ->NewInstance(env->context())
+             .ToLocal(&req_wrap_obj)) {
+      return StreamWriteResult{false, UV_EBUSY, nullptr, 0, {}};
+    }
+    StreamReq::ResetObject(req_wrap_obj);
+  }
+
+  AsyncHooks::DefaultTriggerAsyncIdScope trigger_scope(GetAsyncWrap());
+  WriteWrap* req_wrap = CreateWriteWrap(req_wrap_obj);
+  BaseObjectPtr<AsyncWrap> req_wrap_ptr(req_wrap->GetAsyncWrap());
+
+  LibuvWriteWrap* uv_req_wrap = static_cast<LibuvWriteWrap*>(req_wrap);
+  int err = DoWrite(uv_req_wrap, bufs, count, send_handle);
+
+  if (err != 0) {
+    req_wrap->Dispose();  // AfterUvWrite will not be called, so cleanup here
+    return StreamWriteResult{false, err, nullptr, total_bytes, {}};
+  } else if (stream()->write_queue_size == 0) {
+    uv_req_wrap->sync_finished_ = true;
+    return StreamWriteResult{false, err, nullptr, total_bytes, {}};
+  }
+
+  // the write will finish asynchronously:
+
+  // LibuvStreamWrap does not use Error()
+
+  return StreamWriteResult{
+      true, err, req_wrap, total_bytes, std::move(req_wrap_ptr)};
+}
 
 void LibuvStreamWrap::AfterUvWrite(uv_write_t* req, int status) {
   LibuvWriteWrap* req_wrap = static_cast<LibuvWriteWrap*>(
       LibuvWriteWrap::from_req(req));
   CHECK_NOT_NULL(req_wrap);
+  if (req_wrap->sync_finished_) {  // do nothing but cleanup
+    req_wrap->Dispose();
+    return;
+  }
+
   HandleScope scope(req_wrap->env()->isolate());
   Context::Scope context_scope(req_wrap->env()->context());
   req_wrap->Done(status);

@@ -776,6 +776,8 @@ class AsyncHooks : public MemoryRetainer {
         delete;
 
    private:
+    /* one Environment has one AsyncHooks only, this is init to
+     * env->async_hooks_ in constructor */
     AsyncHooks* async_hooks_;
     double old_default_trigger_async_id_;
   };

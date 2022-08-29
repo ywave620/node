@@ -136,7 +136,7 @@ int JSStream::DoWrite(WriteWrap* w,
       !value->Int32Value(env()->context()).To(&value_int)) {
     if (try_catch.HasCaught() && !try_catch.HasTerminated())
       errors::TriggerUncaughtException(env()->isolate(), try_catch);
-  }
+  }  // if no execption, the JS code return 0
   return value_int;
 }
 
