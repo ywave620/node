@@ -1300,6 +1300,22 @@ class Environment : public MemoryRetainer {
   void AddUnmanagedFd(int fd);
   void RemoveUnmanagedFd(int fd);
 
+
+  // used by the constructor and destructor of the InternalCallbackScope
+  enum HTTPProxyStage {
+    kUnknown = 0,
+    kParsing,
+    kParsingOnHeadersComplete
+  };
+
+  enum HTTPProxyStage http_proxy_stage = HTTPProxyStage::kUnknown;
+  uint64_t http_parsing_time = 0;
+  uint64_t http_parsing_on_headers_complete_time = 0;
+
+  uint64_t socket_read_start = 0;
+  uint64_t server_socket_read_time = 0;
+  uint64_t client_socket_read_time = 0;
+
  private:
   inline void ThrowError(v8::Local<v8::Value> (*fun)(v8::Local<v8::String>),
                          const char* errmsg);

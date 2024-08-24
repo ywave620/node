@@ -225,6 +225,7 @@ class InternalCallbackScope {
   v8::Local<v8::Object> object_;
   bool skip_hooks_;
   bool skip_task_queues_;
+  uint64_t start_ = 0;
   bool failed_ = false;
   bool pushed_ids_ = false;
   bool closed_ = false;

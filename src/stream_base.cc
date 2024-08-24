@@ -349,6 +349,11 @@ MaybeLocal<Value> StreamBase::CallJSOnreadMethod(ssize_t nread,
   Local<Value> onread = wrap->object()->GetInternalField(
       StreamBase::kOnReadFunctionField);
   CHECK(onread->IsFunction());
+
+  if (env->socket_read_start != 0)
+    env->client_socket_read_time += uv_hrtime() - env->socket_read_start;
+  env->socket_read_start = 0;
+  
   return wrap->MakeCallback(onread.As<Function>(), arraysize(argv), argv);
 }
 

@@ -653,6 +653,13 @@ class Parser : public AsyncWrap, public StreamListener {
 
 
   void OnStreamRead(ssize_t nread, const uv_buf_t& buf) override {
+    uint64_t parsing_start = uv_hrtime();
+    env()->server_socket_read_time += parsing_start - env()->socket_read_start;
+    env()->socket_read_start = 0;
+
+    CHECK(env()->http_proxy_stage == Environment::HTTPProxyStage::kUnknown);
+    env()->http_proxy_stage = Environment::HTTPProxyStage::kParsing;
+
     HandleScope scope(env()->isolate());
     // Once we’re done here, either indicate that the HTTP parser buffer
     // is free for re-use, or free() the data if it didn’t come from there
@@ -662,6 +669,9 @@ class Parser : public AsyncWrap, public StreamListener {
         binding_data_->parser_buffer_in_use = false;
       else
         free(buf.base);
+
+      env()->http_parsing_time += uv_hrtime() - parsing_start;
+      env()->http_proxy_stage = Environment::HTTPProxyStage::kUnknown;
     });
 
     if (nread < 0) {

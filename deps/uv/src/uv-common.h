@@ -357,6 +357,8 @@ typedef struct uv__loop_metrics_s uv__loop_metrics_t;
 typedef struct uv__loop_internal_fields_s uv__loop_internal_fields_t;
 
 struct uv__loop_metrics_s {
+  uint64_t non_blocking_time;
+  uint64_t after_io_poll;
   uint64_t provider_entry_time;
   uint64_t provider_idle_time;
   uv_mutex_t lock;

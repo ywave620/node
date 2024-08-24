@@ -222,6 +222,10 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       if (pthread_sigmask(SIG_BLOCK, &sigset, NULL))
         abort();
 
+    uint64_t after_io_poll = uv__get_loop_metrics(loop)->after_io_poll;
+    if (after_io_poll > 0) // exclude the first run              same option as the user space uv_hrtime()
+      uv__get_loop_metrics(loop)->non_blocking_time += uv__hrtime(UV_CLOCK_PRECISE) - after_io_poll;
+
     if (no_epoll_wait != 0 || (sigmask != 0 && no_epoll_pwait == 0)) {
       nfds = epoll_pwait(loop->backend_fd,
                          events,
@@ -242,6 +246,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         no_epoll_wait = 1;
       }
     }
+    uv__get_loop_metrics(loop)->after_io_poll = uv__hrtime(UV_CLOCK_PRECISE);
 
     if (sigmask != 0 && no_epoll_pwait != 0)
       if (pthread_sigmask(SIG_UNBLOCK, &sigset, NULL))

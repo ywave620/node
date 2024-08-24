@@ -78,6 +78,10 @@ InternalCallbackScope::InternalCallbackScope(Environment* env,
     // an exception occurs.
     AsyncWrap::EmitBefore(env, asyncContext.async_id);
   }
+
+  if (env_->http_proxy_stage != Environment::HTTPProxyStage::kUnknown) {
+    start_ = uv_hrtime();
+  }
 }
 
 InternalCallbackScope::~InternalCallbackScope() {
@@ -88,6 +92,23 @@ InternalCallbackScope::~InternalCallbackScope() {
 void InternalCallbackScope::Close() {
   if (closed_) return;
   closed_ = true;
+
+  if (env_->http_proxy_stage != Environment::HTTPProxyStage::kUnknown) {
+    uint64_t now = uv_hrtime();
+    CHECK(start_ != 0);
+    CHECK_GT(now, start_);
+    switch (env_->http_proxy_stage)
+    {
+    case Environment::HTTPProxyStage::kParsingOnHeadersComplete:
+      env_->http_parsing_on_headers_complete_time -= now - start_;
+      // fallthrough
+    case Environment::HTTPProxyStage::kParsing:
+      env_->http_parsing_time -= now - start_;
+      break;
+    default:
+      CHECK(false);
+    }
+  }
 
   auto idle = OnScopeLeave([&]() { env_->isolate()->SetIdle(true); });
 

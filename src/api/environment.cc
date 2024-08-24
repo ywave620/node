@@ -6,6 +6,7 @@
 #include "node_platform.h"
 #include "node_v8_platform-inl.h"
 #include "uv.h"
+#include <iostream>
 
 #if HAVE_INSPECTOR
 #include "inspector/worker_inspector.h"  // ParentInspectorHandle
@@ -715,9 +716,40 @@ ThreadId AllocateEnvironmentThreadId() {
   return ThreadId { next_thread_id++ };
 }
 
+struct uv__loop_metrics_s {
+  uint64_t non_blocking_time;
+  uint64_t after_io_poll;
+  uint64_t provider_entry_time;
+  uint64_t provider_idle_time;
+  uv_mutex_t lock;
+};
+
+struct uv__loop_internal_fields_s {
+  unsigned int flags;
+  struct uv__loop_metrics_s loop_metrics;
+};
+typedef struct uv__loop_internal_fields_s uv__loop_internal_fields_t;
+
+#define uv__get_internal_fields(loop)                                         \
+  ((uv__loop_internal_fields_t*) loop->internal_fields)
+
+#define uv__get_loop_metrics(loop)                                            \
+  (&uv__get_internal_fields(loop)->loop_metrics)
+
 void DefaultProcessExitHandler(Environment* env, int exit_code) {
   env->set_can_call_into_js(false);
   env->stop_sub_worker_contexts();
+
+
+  struct uv__loop_metrics_s *metrics = uv__get_loop_metrics(env->event_loop());
+
+  // this function won't be called by master, GREAT!
+  std::cout << "non_blocking_time (ns) " << metrics->non_blocking_time
+    << "\nserver_socket_read_time (ns) " << env->server_socket_read_time
+    << "\nclient_socket_read_time (ns) " << env->client_socket_read_time
+    << "\nhttp_parsing_on_headers_complete_time (ns) " << env->http_parsing_on_headers_complete_time
+    << "\nhttp_parsing_time (ns) " << env->http_parsing_time << '\n';
+
   DisposePlatform();
   uv_library_shutdown();
   exit(exit_code);
