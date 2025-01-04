@@ -66,7 +66,7 @@ class BaseObject : public MemoryRetainer {
 
   inline v8::Global<v8::Object>& persistent();
 
-  inline Environment* env() const;
+  Environment* env() const;
   inline Realm* realm() const;
 
   // Get a BaseObject* pointer, or subclass pointer, for the JS object that

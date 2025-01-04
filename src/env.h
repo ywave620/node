@@ -620,6 +620,9 @@ class Environment final : public MemoryRetainer {
 
   SET_MEMORY_INFO_NAME(Environment)
 
+  // explicitly define it to make doxygen to generate the call graph for this function
+  static v8::Local<v8::String> ondone_string() const;
+
   static std::string GetExecPath(const std::vector<std::string>& argv);
   static std::string GetCwd(const std::string& exec_path);
 

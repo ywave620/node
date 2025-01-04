@@ -814,7 +814,8 @@ void Http2Session::Close(uint32_t code, bool socket_closed) {
   if (!is_write_in_progress() || !stream_) {
     Debug(this, "make done session callback");
     HandleScope scope(env()->isolate());
-    MakeCallback(env()->ondone_string(), 0, nullptr);
+    Environment* env = env();
+    MakeCallback(env->ondone_string(), 0, nullptr);
     if (stream_ != nullptr) {
       // Start reading again to detect the other end finishing.
       set_reading_stopped(false);
@@ -1731,7 +1732,8 @@ void Http2Session::OnStreamAfterWrite(WriteWrap* w, int status) {
 
   if (is_destroyed()) {
     HandleScope scope(env()->isolate());
-    MakeCallback(env()->ondone_string(), 0, nullptr);
+    Environment* env = env();
+    MakeCallback(env->ondone_string(), 0, nullptr);
     if (stream_ != nullptr) {
       // Start reading again to detect the other end finishing.
       set_reading_stopped(false);
